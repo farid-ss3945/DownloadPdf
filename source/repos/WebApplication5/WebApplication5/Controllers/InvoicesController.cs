@@ -81,5 +81,25 @@ namespace WebApplication5.Controllers
             var invoices = await _invoiceService.GetPagedAsync(page, pageSize, sortBy, sortOrder);
             return Ok(invoices);
         }
+        [HttpGet("Download")]
+        public async Task<IActionResult> Download(int id) { 
+            var invoice = await _invoiceService.GetByIdAsync(id);
+            var rowsHtml = string.Join("", invoice.Rows.Select(row =>
+    $"<tr><td>Service : {row.Service}</td><td> Quantity : {row.Quantity}</td><td> Rate : {row.Rate}</td></tr>"
+));
+            var render=new ChromePdfRenderer();
+            string html = $@"<p>Id : {invoice.Id}</p>
+                            <p>CustomerId : {invoice.CustomerId}</p>
+                            <p>Status : {invoice.Status}</p>
+                            <p>StartDate : {invoice.StartDate}</p>
+                            <p>EndDate : {invoice.EndDate}</p>
+                            <p>TotalSum : {invoice.TotalSum}</p>
+                            <p>Comment : {invoice.Comment}</p>
+                            <p>{rowsHtml}</p>";
+            var pdf=await render.RenderHtmlAsPdfAsync(html);
+            var pdfBytes = pdf.BinaryData;
+
+            return File(pdfBytes, "application/pdf", $"Invoice_{invoice.Id}.pdf");
+        }
     }
 }
