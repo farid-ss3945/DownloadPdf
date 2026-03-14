@@ -1,4 +1,5 @@
 ﻿using WebApplication5.DTOs.Invoice;
+using WebApplication5.DTOs.Stats;
 
 namespace WebApplication5.Services.Interfaces
 {
@@ -14,6 +15,11 @@ namespace WebApplication5.Services.Interfaces
         Task<IEnumerable<InvoiceResponseDto>> GetPagedAsync(int page,
                                                                           int pageSize,
                                                                           string sortBy,
-                                                                          string sortOrder);
+                                                                          string sortOrder,
+                                                                          string? search = null);
+        Task<IEnumerable<InvoiceStatsDto>> GetInvoiceStats(DateTimeOffset startDate, DateTimeOffset endDate);
+        Task<IEnumerable<InvoiceStatusStatsDto>> GetInvoiceStatusStats(
+    DateTimeOffset startDate,
+    DateTimeOffset endDate);
     }
 }

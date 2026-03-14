@@ -76,9 +76,10 @@ namespace WebApplication5.Controllers
         public async Task<ActionResult<IEnumerable<CustomerResponseDto>>> GetPaged(int page = 1,
     int pageSize = 10,
     string sortBy = "CreatedAt",
-    string sortOrder = "desc")
+    string sortOrder = "desc",
+            string? search=null)
         {
-            var invoices = await _invoiceService.GetPagedAsync(page, pageSize, sortBy, sortOrder);
+            var invoices = await _invoiceService.GetPagedAsync(page, pageSize, sortBy, sortOrder,search);
             return Ok(invoices);
         }
         [HttpGet("Download")]
@@ -100,6 +101,24 @@ namespace WebApplication5.Controllers
             var pdfBytes = pdf.BinaryData;
 
             return File(pdfBytes, "application/pdf", $"Invoice_{invoice.Id}.pdf");
+        }
+        [HttpGet("Stats")]
+        public async Task<IActionResult> InvoiceStats(
+    DateTimeOffset startDate,
+    DateTimeOffset endDate)
+        {
+            var result = await _invoiceService.GetInvoiceStats(startDate, endDate);
+            return Ok(result);
+        }
+        [HttpGet("reports/invoice-status")]
+        public async Task<IActionResult> GetInvoiceStatusStats(
+    DateTimeOffset startDate,
+    DateTimeOffset endDate)
+        {
+            var result = await _invoiceService
+                .GetInvoiceStatusStats(startDate, endDate);
+
+            return Ok(result);
         }
     }
 }

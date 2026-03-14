@@ -62,10 +62,19 @@ namespace WebApplication5.Controllers
         public async Task<ActionResult<IEnumerable<CustomerResponseDto>>> GetPaged(int page = 1,
     int pageSize = 10,
     string sortBy = "CreatedAt",
-    string sortOrder = "desc")
+    string sortOrder = "desc",
+    string? search = null,string? by=null)
         {
-            var customers = await _customerService.GetPagedAsync(page,pageSize,sortBy,sortOrder);
+            var customers = await _customerService.GetPagedAsync(page,pageSize,sortBy,sortOrder,search,by);
             return Ok(customers);
+        }
+        [HttpGet("Stats")]
+        public async Task<IActionResult> CustomerStats(
+    DateTimeOffset startDate,
+    DateTimeOffset endDate)
+        {
+            var result = await _customerService.GetCustomerStats(startDate, endDate);
+            return Ok(result);
         }
     }
 }

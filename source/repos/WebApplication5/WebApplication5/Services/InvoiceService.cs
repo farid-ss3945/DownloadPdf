@@ -1,4 +1,5 @@
-﻿using AutoMapper;
+﻿using System.Linq.Expressions;
+using AutoMapper;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
@@ -6,6 +7,7 @@ using WebApplication5.Data;
 using WebApplication5.DTOs;
 using WebApplication5.DTOs.Customer;
 using WebApplication5.DTOs.Invoice;
+using WebApplication5.DTOs.Stats;
 using WebApplication5.Models;
 using WebApplication5.Services.Interfaces;
 
@@ -20,6 +22,8 @@ namespace WebApplication5.Services
             _context = context;
             _mapper = mapper;
         }
+        private static decimal CalculateTotal(IEnumerable<InvoiceRow> rows) =>
+    rows.Sum(r => r.Quantity * r.Rate);
 
         public async Task<bool> ArchiveAsync(int id)
         {
@@ -43,51 +47,58 @@ namespace WebApplication5.Services
             var invoice = await _context.Invoices.Include(i=>i.Rows).FirstOrDefaultAsync(i=>i.Id==id);
             if (invoice == null) return null;
             if (status == null) return null;
-            if (status == "Created")
-            {
-                invoice.UpdatedAt = DateTimeOffset.UtcNow;
-                await _context.SaveChangesAsync();
-                return _mapper.Map<InvoiceResponseDto>(invoice);
-            }
-            else if (status == "Sent")
-            {
-                invoice.Status = Models.InvoiceStatus.Sent;
-                invoice.UpdatedAt = DateTimeOffset.UtcNow;
-                await _context.SaveChangesAsync();
-                return _mapper.Map<InvoiceResponseDto>(invoice);
-            }
-            else if (status == "Received")
-            {
-                invoice.Status = Models.InvoiceStatus.Received;
-                invoice.UpdatedAt = DateTimeOffset.UtcNow;
-                await _context.SaveChangesAsync();
-                return _mapper.Map<InvoiceResponseDto>(invoice);
-            }
-            else if (status == "Paid")
-            {
+            //if (status == "Created")
+            //{
+            //    invoice.UpdatedAt = DateTimeOffset.UtcNow;
+            //    await _context.SaveChangesAsync();
+            //    return _mapper.Map<InvoiceResponseDto>(invoice);
+            //}
+            //else if (status == "Sent")
+            //{
+            //    invoice.Status = Models.InvoiceStatus.Sent;
+            //    invoice.UpdatedAt = DateTimeOffset.UtcNow;
+            //    await _context.SaveChangesAsync();
+            //    return _mapper.Map<InvoiceResponseDto>(invoice);
+            //}
+            //else if (status == "Received")
+            //{
+            //    invoice.Status = Models.InvoiceStatus.Received;
+            //    invoice.UpdatedAt = DateTimeOffset.UtcNow;
+            //    await _context.SaveChangesAsync();
+            //    return _mapper.Map<InvoiceResponseDto>(invoice);
+            //}
+            //else if (status == "Paid")
+            //{
 
-                invoice.Status = Models.InvoiceStatus.Paid;
-                invoice.UpdatedAt = DateTimeOffset.UtcNow;
-                await _context.SaveChangesAsync();
-                return _mapper.Map<InvoiceResponseDto>(invoice);
-            }
-            else if (status == "Cancelled")
-            {
-                invoice.Status = Models.InvoiceStatus.Cancelled;
-                invoice.UpdatedAt = DateTimeOffset.UtcNow;
-                await _context.SaveChangesAsync();
-                return _mapper.Map<InvoiceResponseDto>(invoice);
-            }
-            if (status == "Rejected")
-            {
-                invoice.Status = Models.InvoiceStatus.Rejected;
-                invoice.UpdatedAt = DateTimeOffset.UtcNow;
-                await _context.SaveChangesAsync();
-                return _mapper.Map<InvoiceResponseDto>(invoice);
-            }
-            else { 
+            //    invoice.Status = Models.InvoiceStatus.Paid;
+            //    invoice.UpdatedAt = DateTimeOffset.UtcNow;
+            //    await _context.SaveChangesAsync();
+            //    return _mapper.Map<InvoiceResponseDto>(invoice);
+            //}
+            //else if (status == "Cancelled")
+            //{
+            //    invoice.Status = Models.InvoiceStatus.Cancelled;
+            //    invoice.UpdatedAt = DateTimeOffset.UtcNow;
+            //    await _context.SaveChangesAsync();
+            //    return _mapper.Map<InvoiceResponseDto>(invoice);
+            //}
+            //if (status == "Rejected")
+            //{
+            //    invoice.Status = Models.InvoiceStatus.Rejected;
+            //    invoice.UpdatedAt = DateTimeOffset.UtcNow;
+            //    await _context.SaveChangesAsync();
+            //    return _mapper.Map<InvoiceResponseDto>(invoice);
+            //}
+            //else { 
+            //    return null; 
+            //}
+            if (!Enum.TryParse<Models.InvoiceStatus>(status, ignoreCase: true, out var parsedStatus))
                 return null; 
-            }
+
+            invoice.Status = parsedStatus;
+            invoice.UpdatedAt = DateTimeOffset.UtcNow;
+            await _context.SaveChangesAsync();
+            return _mapper.Map<InvoiceResponseDto>(invoice);
 
         }
 
@@ -103,12 +114,12 @@ namespace WebApplication5.Services
 
             }
             invoice.CustomerId=dto.CustomerId;
-            decimal sum=0;
-            foreach (var i in invoice.Rows)
-            {
-                sum += (i.Quantity * i.Rate);
-            }
-            invoice.TotalSum = sum;
+            //decimal sum=0;
+            //foreach (var i in invoice.Rows)
+            //{
+            //    sum += (i.Quantity * i.Rate);
+            //}
+            invoice.TotalSum = CalculateTotal(invoice.Rows);
 
             _context.Invoices.Add(invoice);
             await _context.SaveChangesAsync();
@@ -206,12 +217,12 @@ namespace WebApplication5.Services
             
             _mapper.Map(dto, invoice);
             invoice.UpdatedAt = DateTimeOffset.UtcNow;
-            decimal sum = 0;
-            foreach (var i in invoice.Rows)
-            {
-                sum += (i.Quantity * i.Rate);
-            }
-            invoice.TotalSum = sum;
+            //decimal sum = 0;
+            //foreach (var i in invoice.Rows)
+            //{
+            //    sum += (i.Quantity * i.Rate);
+            //}
+            invoice.TotalSum = CalculateTotal(invoice.Rows);
 
             await _context.SaveChangesAsync();
             return _mapper.Map<InvoiceResponseDto>(invoice);
@@ -219,10 +230,22 @@ namespace WebApplication5.Services
         public async Task<IEnumerable<InvoiceResponseDto>> GetPagedAsync(int page,
                                                                           int pageSize,
                                                                           string sortBy,
-                                                                          string sortOrder)
+                                                                          string sortOrder,
+                                                                          string? search=null)
 
         {
-            var query = _context.Invoices.AsQueryable();
+            var query = _context.Invoices.Where(i=>i.DeletedAt==null).AsQueryable();
+            if (string.IsNullOrWhiteSpace(search) == false)
+            {
+                if (decimal.TryParse(search, out var totalSum))
+                    query = query.Where(i => i.TotalSum == totalSum);
+
+                else if (Enum.TryParse<Models.InvoiceStatus>(search, true, out var status))
+                    query = query.Where(i => (int)i.Status == (int)status);
+
+                else if (DateTime.TryParse(search, out var date))
+                    query = query.Where(i => i.CreatedAt.Date == date.Date);
+            }
             switch (sortBy)
             {
                 case "Id":
@@ -288,6 +311,33 @@ namespace WebApplication5.Services
                 .ToListAsync();
 
             return _mapper.Map<IEnumerable<InvoiceResponseDto>>(invoices);
+        }
+        public async Task<IEnumerable<InvoiceStatsDto>> GetInvoiceStats(DateTimeOffset startDate, DateTimeOffset endDate)
+        {
+            return await _context.InvoiceRows
+                    .Where(r => r.Invoice.CreatedAt >= startDate && r.Invoice.CreatedAt <= endDate)
+                    .GroupBy(r => r.Service)
+                    .Select(g => new InvoiceStatsDto
+                    {
+                        Service = g.Key,
+                        InvoiceCount = g.Select(r => r.InvoiceId).Distinct().Count(),
+                        TotalSum = g.Sum(r => r.Sum)
+                    })
+                    .ToListAsync();
+        }
+        public async Task<IEnumerable<InvoiceStatusStatsDto>> GetInvoiceStatusStats(
+    DateTimeOffset startDate,
+    DateTimeOffset endDate)
+        {
+            return await _context.Invoices
+                .Where(i => i.CreatedAt >= startDate && i.CreatedAt <= endDate)
+                .GroupBy(i => i.Status)
+                .Select(g => new InvoiceStatusStatsDto
+                {
+                    Status = g.Key,
+                    InvoiceCount = g.Count()
+                })
+                .ToListAsync();
         }
     }
 }

@@ -1,5 +1,7 @@
-﻿using WebApplication5.DTOs.Customer;
+﻿using Microsoft.AspNetCore.Mvc;
+using WebApplication5.DTOs.Customer;
 using WebApplication5.DTOs.Invoice;
+using WebApplication5.DTOs.Stats;
 using WebApplication5.Models;
 
 namespace WebApplication5.Services.Interfaces
@@ -15,6 +17,8 @@ namespace WebApplication5.Services.Interfaces
         Task<IEnumerable<CustomerResponseDto>> GetPagedAsync(int page,
             int pageSize,
             string sortBy,
-            string sortOrder);
+            string sortOrder,
+            string? search=null,string? by=null);
+        Task<IEnumerable<CustomerStatsDto>> GetCustomerStats(DateTimeOffset startDate, DateTimeOffset endDate);
     }
 }
